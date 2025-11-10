@@ -2,6 +2,8 @@
 
 An infinite canvas application for managing branching LLM conversations with context-aware chat spawning and summarization capabilities.
 
+![InferFlow Screenshot](docs/screenshot.png)
+
 ## Features
 
 - 🎨 **Infinite Canvas** - Visualize conversations as nodes on an infinite canvas
@@ -81,14 +83,21 @@ src/
 - **Tailwind CSS** - Styling
 - **OpenAI SDK** - LLM integration
 
+## Features (Implemented)
+
+- ✅ **Session Management** - Save, load, export, and import conversation sessions
+- ✅ **Auto Layout** - Automatically organize nodes in a hierarchical tree layout
+- ✅ **Summary View** - Generate and export conversation summaries
+- ✅ **Node Management** - Delete nodes and assign human-readable names
+- ✅ **Section Selection** - Select specific sections of answers for context
+- ✅ **Export/Import** - Save sessions to JSON files and load them elsewhere
+
 ## Future Features
 
-- [ ] Summarization function with export (text, PDF, PNG)
 - [ ] Support for other LLM providers (Anthropic, etc.)
 - [ ] Search across conversations
-- [ ] Node editing/deletion
-- [ ] Export/import conversations
 - [ ] Conversation templates
+- [ ] Enhanced export formats (PDF, PNG)
 
 ## License
 
