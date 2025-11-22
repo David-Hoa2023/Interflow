@@ -49,6 +49,7 @@ export interface ConversationNode {
   position: { x: number; y: number };
   isCollapsed: boolean;
   selectedSectionIndexFromParent?: number; // Index of section selected from parent when spawning this node
+  includeInContext?: boolean; // Whether this node should be included in context (default: true)
 }
 
 export interface ConversationTree {

@@ -1,8 +1,9 @@
-import React from 'react';
-import { X, ArrowRight, Layers, AlertCircle } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { X, ArrowRight, Layers, AlertCircle, CheckSquare, Square } from 'lucide-react';
 import { useConversationStore } from '../../store/conversationStore';
 import { useConfigStore } from '../../store/configStore';
 import { llmService } from '../../services/llm/LLMService';
+import { MarkdownRenderer } from '../common/MarkdownRenderer';
 
 interface ContextPanelProps {
   nodeId: string;
@@ -10,15 +11,59 @@ interface ContextPanelProps {
 }
 
 export const ContextPanel: React.FC<ContextPanelProps> = ({ nodeId, onClose }) => {
-  const { getNodeChain, getNode } = useConversationStore();
+  const { getNodeChain, getNode, updateNode } = useConversationStore();
   const { llmConfig } = useConfigStore();
 
   const node = getNode(nodeId);
   const chain = getNodeChain(nodeId);
 
+  // Track local selection state
+  const [selectedNodes, setSelectedNodes] = useState<Set<string>>(new Set());
+
+  // Initialize selected nodes from node data
+  useEffect(() => {
+    const initialSelected = new Set<string>();
+    chain.forEach((n) => {
+      // By default, all nodes are included unless explicitly set to false
+      if (n.includeInContext !== false) {
+        initialSelected.add(n.id);
+      }
+    });
+    setSelectedNodes(initialSelected);
+  }, [chain]);
+
   if (!node) {
     return null;
   }
+
+  const handleToggleNode = (nodeIdToToggle: string) => {
+    const newSelected = new Set(selectedNodes);
+    if (newSelected.has(nodeIdToToggle)) {
+      newSelected.delete(nodeIdToToggle);
+    } else {
+      newSelected.add(nodeIdToToggle);
+    }
+    setSelectedNodes(newSelected);
+
+    // Update the node's includeInContext property
+    updateNode(nodeIdToToggle, { includeInContext: newSelected.has(nodeIdToToggle) });
+  };
+
+  const handleSelectAll = () => {
+    const allSelected = new Set<string>();
+    chain.forEach((n) => {
+      allSelected.add(n.id);
+      updateNode(n.id, { includeInContext: true });
+    });
+    setSelectedNodes(allSelected);
+  };
+
+  const handleDeselectAll = () => {
+    chain.forEach((n) => {
+      updateNode(n.id, { includeInContext: false });
+    });
+    setSelectedNodes(new Set());
+  };
 
   // Calculate token counts for each node in the chain
   const nodesWithTokens = chain.map((n) => {
@@ -37,7 +82,12 @@ export const ContextPanel: React.FC<ContextPanelProps> = ({ nodeId, onClose }) =
     };
   });
 
-  const totalTokens = nodesWithTokens.reduce((sum, n) => sum + n.totalTokens, 0);
+  // Calculate total tokens only for selected nodes
+  const totalTokens = nodesWithTokens.reduce((sum, n) => {
+    return sum + (selectedNodes.has(n.node.id) ? n.totalTokens : 0);
+  }, 0);
+
+  const selectedCount = selectedNodes.size;
 
   // Get model's context window
   const currentModel = llmConfig
@@ -77,7 +127,7 @@ export const ContextPanel: React.FC<ContextPanelProps> = ({ nodeId, onClose }) =
                 Total Context Size
               </h3>
               <p className="text-xs text-gray-500 dark:text-gray-400">
-                {chain.length} node{chain.length !== 1 ? 's' : ''} in conversation path
+                {selectedCount} of {chain.length} node{chain.length !== 1 ? 's' : ''} selected
               </p>
             </div>
             <div className="text-right">
@@ -85,6 +135,25 @@ export const ContextPanel: React.FC<ContextPanelProps> = ({ nodeId, onClose }) =
                 {totalTokens.toLocaleString()}
               </div>
               <div className="text-xs text-gray-500 dark:text-gray-400">tokens</div>
+            </div>
+          </div>
+
+          {/* Select All / Deselect All Buttons */}
+          <div className="flex items-center gap-2 mb-3">
+            <button
+              onClick={handleSelectAll}
+              className="px-3 py-1.5 bg-blue-500 hover:bg-blue-600 text-white text-xs rounded transition-colors"
+            >
+              Select All
+            </button>
+            <button
+              onClick={handleDeselectAll}
+              className="px-3 py-1.5 bg-gray-500 hover:bg-gray-600 text-white text-xs rounded transition-colors"
+            >
+              Deselect All
+            </button>
+            <div className="ml-auto text-xs text-gray-600 dark:text-gray-400">
+              Click nodes to toggle selection
             </div>
           </div>
 
@@ -134,24 +203,43 @@ export const ContextPanel: React.FC<ContextPanelProps> = ({ nodeId, onClose }) =
           <div className="space-y-4">
             {nodesWithTokens.map(({ node: n, questionTokens, answerTokens, totalTokens }, index) => {
               const isCurrentNode = n.id === nodeId;
+              const isSelected = selectedNodes.has(n.id);
 
               return (
                 <div key={n.id}>
                   <div
-                    className={`p-4 rounded-lg border-2 ${
+                    className={`p-4 rounded-lg border-2 cursor-pointer transition-all ${
                       isCurrentNode
                         ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-500 dark:border-blue-600'
-                        : 'bg-white dark:bg-gray-700 border-gray-200 dark:border-gray-600'
+                        : isSelected
+                        ? 'bg-white dark:bg-gray-700 border-green-400 dark:border-green-600'
+                        : 'bg-gray-100 dark:bg-gray-800 border-gray-300 dark:border-gray-700 opacity-60'
                     }`}
+                    onClick={() => handleToggleNode(n.id)}
                   >
                     {/* Node Header */}
                     <div className="flex items-center justify-between mb-3">
                       <div className="flex items-center gap-2">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleToggleNode(n.id);
+                          }}
+                          className="flex-shrink-0"
+                        >
+                          {isSelected ? (
+                            <CheckSquare className="w-5 h-5 text-green-600 dark:text-green-400" />
+                          ) : (
+                            <Square className="w-5 h-5 text-gray-400" />
+                          )}
+                        </button>
                         <div
                           className={`text-sm font-semibold ${
                             isCurrentNode
                               ? 'text-blue-700 dark:text-blue-300'
-                              : 'text-gray-700 dark:text-gray-300'
+                              : isSelected
+                              ? 'text-gray-700 dark:text-gray-300'
+                              : 'text-gray-500 dark:text-gray-500'
                           }`}
                         >
                           {n.name}
@@ -159,6 +247,11 @@ export const ContextPanel: React.FC<ContextPanelProps> = ({ nodeId, onClose }) =
                         {isCurrentNode && (
                           <span className="text-xs bg-blue-600 text-white px-2 py-0.5 rounded">
                             Current
+                          </span>
+                        )}
+                        {!isSelected && (
+                          <span className="text-xs bg-gray-500 text-white px-2 py-0.5 rounded">
+                            Excluded
                           </span>
                         )}
                       </div>
@@ -176,9 +269,7 @@ export const ContextPanel: React.FC<ContextPanelProps> = ({ nodeId, onClose }) =
                       <div className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1">
                         QUESTION
                       </div>
-                      <div className="text-sm text-gray-900 dark:text-gray-100">
-                        {n.question}
-                      </div>
+                      <MarkdownRenderer content={n.question} className="text-sm" />
                     </div>
 
                     {/* Answer */}
@@ -186,8 +277,8 @@ export const ContextPanel: React.FC<ContextPanelProps> = ({ nodeId, onClose }) =
                       <div className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1">
                         ANSWER
                       </div>
-                      <div className="text-sm text-gray-900 dark:text-gray-100 whitespace-pre-wrap line-clamp-6">
-                        {n.answer}
+                      <div className="line-clamp-6">
+                        <MarkdownRenderer content={n.answer} className="text-sm" />
                       </div>
                     </div>
 

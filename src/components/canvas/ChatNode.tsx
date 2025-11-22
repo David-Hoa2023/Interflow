@@ -5,6 +5,7 @@ import { ConversationNode, NodeType } from '../../types/conversation';
 import { useConversationStore } from '../../store/conversationStore';
 import { parseAnswerIntoSections } from '../../utils/answerParser';
 import { ContextPanel } from '../context/ContextPanel';
+import { MarkdownRenderer } from '../common/MarkdownRenderer';
 
 interface ChatNodeData extends ConversationNode {
   onSpawnChild: (nodeId: string, selectedSectionIndex?: number) => void;
@@ -257,9 +258,7 @@ function ChatNodeComponent({ data, selected }: NodeProps<ChatNodeData>) {
             <div className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-2">
               QUESTION
             </div>
-            <div className="text-sm text-gray-900 dark:text-gray-100">
-              {data.question}
-            </div>
+            <MarkdownRenderer content={data.question} className="text-sm" />
           </div>
 
           {/* Answer with Sections */}
@@ -308,10 +307,13 @@ function ChatNodeComponent({ data, selected }: NodeProps<ChatNodeData>) {
                       />
                     </div>
                     <div
-                      className="flex-1 text-sm text-gray-800 dark:text-gray-200 whitespace-pre-wrap cursor-pointer"
+                      className="flex-1 cursor-pointer"
                       onClick={() => handleSectionSelect(index)}
                     >
-                      {section.text}
+                      <MarkdownRenderer
+                        content={section.text}
+                        className="text-sm"
+                      />
                     </div>
                     {hasChildren && (
                       <button
