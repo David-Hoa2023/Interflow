@@ -3,6 +3,7 @@ import ConversationCanvas from './components/canvas/ConversationCanvas';
 import InferenceWindow from './components/inference/InferenceWindow';
 import SummaryView from './components/summary/SummaryView';
 import SessionManager from './components/session/SessionManager';
+import { SettingsPanel } from './components/settings/SettingsPanel';
 import { useConfigStore } from './store/configStore';
 import { useConversationStore } from './store/conversationStore';
 
@@ -12,6 +13,7 @@ function App() {
   const [key, setKey] = useState(0); // Force re-render when parent changes
   const [showSummary, setShowSummary] = useState(false);
   const [showSessionManager, setShowSessionManager] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
   const { theme, setTheme, loadFromStorage } = useConfigStore();
   const { clearAll, loadFromStorage: loadConversations, applyAutoLayout } = useConversationStore();
 
@@ -73,6 +75,12 @@ function App() {
         </h1>
         <div className="flex items-center gap-4">
           <button
+            onClick={() => setShowSettings(true)}
+            className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors text-sm font-medium"
+          >
+            ⚙️ Settings
+          </button>
+          <button
             onClick={() => setShowSessionManager(true)}
             className="px-4 py-2 bg-indigo-500 hover:bg-indigo-600 text-white rounded-lg transition-colors text-sm font-medium"
           >
@@ -119,6 +127,11 @@ function App() {
 
       {/* Inference Window */}
       <InferenceWindow key={key} parentNodeId={parentNodeId} selectedSectionIndex={selectedSectionIndex} onComplete={handleComplete} />
+
+          {/* Settings Modal */}
+          {showSettings && (
+            <SettingsPanel isOpen={showSettings} onClose={() => setShowSettings(false)} />
+          )}
 
           {/* Summary Modal */}
           {showSummary && (

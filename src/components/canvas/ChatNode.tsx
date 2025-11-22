@@ -1,7 +1,7 @@
 import { memo, useState, useEffect, useMemo } from 'react';
 import { Handle, Position, NodeProps } from 'reactflow';
-import { Plus, ChevronDown, ChevronRight, ArrowRight, Trash2 } from 'lucide-react';
-import { ConversationNode } from '../../types/conversation';
+import { Plus, ChevronDown, ChevronRight, ArrowRight, Trash2, HelpCircle, MessageSquare, GitBranch, FileText, Link as LinkIcon, CheckSquare, Zap, DollarSign, Clock } from 'lucide-react';
+import { ConversationNode, NodeType } from '../../types/conversation';
 import { useConversationStore } from '../../store/conversationStore';
 import { parseAnswerIntoSections } from '../../utils/answerParser';
 
@@ -9,6 +9,60 @@ interface ChatNodeData extends ConversationNode {
   onSpawnChild: (nodeId: string, selectedSectionIndex?: number) => void;
   onFocusChild?: (nodeId: string) => void;
 }
+
+// Helper function to get node type styling
+const getNodeTypeStyle = (type: NodeType) => {
+  switch (type) {
+    case 'question':
+      return {
+        icon: HelpCircle,
+        color: 'text-blue-600 dark:text-blue-400',
+        bgColor: 'bg-blue-50 dark:bg-blue-900/20',
+        borderColor: 'border-blue-300 dark:border-blue-700',
+        label: 'Question',
+      };
+    case 'decision':
+      return {
+        icon: GitBranch,
+        color: 'text-amber-600 dark:text-amber-400',
+        bgColor: 'bg-amber-50 dark:bg-amber-900/20',
+        borderColor: 'border-amber-300 dark:border-amber-700',
+        label: 'Decision',
+      };
+    case 'summary':
+      return {
+        icon: FileText,
+        color: 'text-purple-600 dark:text-purple-400',
+        bgColor: 'bg-purple-50 dark:bg-purple-900/20',
+        borderColor: 'border-purple-300 dark:border-purple-700',
+        label: 'Summary',
+      };
+    case 'reference':
+      return {
+        icon: LinkIcon,
+        color: 'text-green-600 dark:text-green-400',
+        bgColor: 'bg-green-50 dark:bg-green-900/20',
+        borderColor: 'border-green-300 dark:border-green-700',
+        label: 'Reference',
+      };
+    case 'action':
+      return {
+        icon: CheckSquare,
+        color: 'text-red-600 dark:text-red-400',
+        bgColor: 'bg-red-50 dark:bg-red-900/20',
+        borderColor: 'border-red-300 dark:border-red-700',
+        label: 'Action',
+      };
+    default: // 'answer'
+      return {
+        icon: MessageSquare,
+        color: 'text-blue-600 dark:text-blue-400',
+        bgColor: 'bg-blue-50 dark:bg-blue-900/20',
+        borderColor: 'border-blue-300 dark:border-blue-700',
+        label: 'Answer',
+      };
+  }
+};
 
 function ChatNodeComponent({ data, selected }: NodeProps<ChatNodeData>) {
   const { toggleCollapse, tree, deleteNode } = useConversationStore();
@@ -66,6 +120,9 @@ function ChatNodeComponent({ data, selected }: NodeProps<ChatNodeData>) {
     }
   };
 
+  const nodeStyle = getNodeTypeStyle(data.type || 'answer');
+  const NodeIcon = nodeStyle.icon;
+
   return (
     <div
       className={`bg-white dark:bg-gray-800 rounded-lg shadow-lg border-2 ${
@@ -92,8 +149,14 @@ function ChatNodeComponent({ data, selected }: NodeProps<ChatNodeData>) {
               </>
             )}
           </button>
-          <div className="text-xs font-semibold text-blue-600 dark:text-blue-400">
-            {data.name || `Node ${data.id.slice(0, 8)}`}
+          <div className="flex items-center gap-1.5">
+            <NodeIcon className={`w-3.5 h-3.5 ${nodeStyle.color}`} />
+            <div className="text-xs font-semibold text-blue-600 dark:text-blue-400">
+              {data.name || `Node ${data.id.slice(0, 8)}`}
+            </div>
+            <div className={`text-xs px-1.5 py-0.5 rounded ${nodeStyle.bgColor} ${nodeStyle.color} font-medium`}>
+              {nodeStyle.label}
+            </div>
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -109,6 +172,35 @@ function ChatNodeComponent({ data, selected }: NodeProps<ChatNodeData>) {
           </button>
         </div>
       </div>
+
+      {/* Metadata Bar */}
+      {!data.isCollapsed && (data.model || data.tokens || data.cost !== undefined) && (
+        <div className="px-3 py-2 bg-gray-50 dark:bg-gray-700/50 border-b border-gray-200 dark:border-gray-700 flex items-center gap-3 text-xs">
+          {data.model && (
+            <div className="flex items-center gap-1 text-gray-600 dark:text-gray-300">
+              <Zap className="w-3 h-3" />
+              <span className="font-medium">{data.model}</span>
+            </div>
+          )}
+          {data.tokens && (
+            <div className="flex items-center gap-1 text-gray-600 dark:text-gray-300">
+              <span className="font-medium">{data.tokens.toLocaleString()} tokens</span>
+            </div>
+          )}
+          {data.cost !== undefined && data.cost > 0 && (
+            <div className="flex items-center gap-1 text-gray-600 dark:text-gray-300">
+              <DollarSign className="w-3 h-3" />
+              <span className="font-medium">${data.cost.toFixed(6)}</span>
+            </div>
+          )}
+          {data.metadata?.processingTime && (
+            <div className="flex items-center gap-1 text-gray-600 dark:text-gray-300">
+              <Clock className="w-3 h-3" />
+              <span className="font-medium">{(data.metadata.processingTime / 1000).toFixed(2)}s</span>
+            </div>
+          )}
+        </div>
+      )}
 
       {!data.isCollapsed && (
         <>
