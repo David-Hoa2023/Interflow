@@ -4,6 +4,7 @@ import InferenceWindow from './components/inference/InferenceWindow';
 import SummaryView from './components/summary/SummaryView';
 import SessionManager from './components/session/SessionManager';
 import { SettingsPanel } from './components/settings/SettingsPanel';
+import { ExportPanel } from './components/export/ExportPanel';
 import { useConfigStore } from './store/configStore';
 import { useConversationStore } from './store/conversationStore';
 
@@ -14,6 +15,7 @@ function App() {
   const [showSummary, setShowSummary] = useState(false);
   const [showSessionManager, setShowSessionManager] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const [showExport, setShowExport] = useState(false);
   const { theme, setTheme, loadFromStorage } = useConfigStore();
   const { clearAll, loadFromStorage: loadConversations, applyAutoLayout } = useConversationStore();
 
@@ -87,6 +89,12 @@ function App() {
             💾 Sessions
           </button>
           <button
+            onClick={() => setShowExport(true)}
+            className="px-4 py-2 bg-green-500 hover:bg-green-600 text-white rounded-lg transition-colors text-sm font-medium"
+          >
+            📥 Export
+          </button>
+          <button
             onClick={handleAutoLayout}
             className="px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white rounded-lg transition-colors text-sm font-medium"
             title="Automatically organize nodes in a tree layout"
@@ -131,6 +139,11 @@ function App() {
           {/* Settings Modal */}
           {showSettings && (
             <SettingsPanel isOpen={showSettings} onClose={() => setShowSettings(false)} />
+          )}
+
+          {/* Export Modal */}
+          {showExport && (
+            <ExportPanel onClose={() => setShowExport(false)} />
           )}
 
           {/* Summary Modal */}

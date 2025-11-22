@@ -1,9 +1,10 @@
 import { memo, useState, useEffect, useMemo } from 'react';
 import { Handle, Position, NodeProps } from 'reactflow';
-import { Plus, ChevronDown, ChevronRight, ArrowRight, Trash2, HelpCircle, MessageSquare, GitBranch, FileText, Link as LinkIcon, CheckSquare, Zap, DollarSign, Clock } from 'lucide-react';
+import { Plus, ChevronDown, ChevronRight, ArrowRight, Trash2, HelpCircle, MessageSquare, GitBranch, FileText, Link as LinkIcon, CheckSquare, Zap, DollarSign, Clock, Layers } from 'lucide-react';
 import { ConversationNode, NodeType } from '../../types/conversation';
 import { useConversationStore } from '../../store/conversationStore';
 import { parseAnswerIntoSections } from '../../utils/answerParser';
+import { ContextPanel } from '../context/ContextPanel';
 
 interface ChatNodeData extends ConversationNode {
   onSpawnChild: (nodeId: string, selectedSectionIndex?: number) => void;
@@ -68,6 +69,7 @@ function ChatNodeComponent({ data, selected }: NodeProps<ChatNodeData>) {
   const { toggleCollapse, tree, deleteNode } = useConversationStore();
   const [selectedSectionIndex, setSelectedSectionIndex] = useState<number | null>(null);
   const [sections, setSections] = useState(parseAnswerIntoSections(data.answer));
+  const [showContextPanel, setShowContextPanel] = useState(false);
 
   // Update sections if answer changes
   useEffect(() => {
@@ -292,19 +294,32 @@ function ChatNodeComponent({ data, selected }: NodeProps<ChatNodeData>) {
             )}
           </div>
 
-          {/* Spawn Button */}
-          <div className="p-3 border-t border-gray-200 dark:border-gray-700 flex justify-center">
+          {/* Action Buttons */}
+          <div className="p-3 border-t border-gray-200 dark:border-gray-700 flex gap-2">
+            <button
+              onClick={() => setShowContextPanel(true)}
+              className="flex items-center gap-2 px-3 py-2 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 rounded-lg transition-colors text-sm font-medium"
+              title="View full context path"
+            >
+              <Layers className="w-4 h-4" />
+              View Context
+            </button>
             <button
               onClick={handleSpawn}
-              className="flex items-center gap-2 px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors text-sm font-medium"
+              className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors text-sm font-medium"
             >
               <Plus className="w-4 h-4" />
               {selectedSectionIndex !== null
                 ? 'Continue with Selected Section'
-                : 'Continue Conversation (Full Answer)'}
+                : 'Continue Conversation'}
             </button>
           </div>
         </>
+      )}
+
+      {/* Context Panel Modal */}
+      {showContextPanel && (
+        <ContextPanel nodeId={data.id} onClose={() => setShowContextPanel(false)} />
       )}
 
       {/* Handles for connections */}
