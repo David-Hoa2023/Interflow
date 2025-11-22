@@ -46,24 +46,58 @@ export default function InferenceWindow({ parentNodeId, selectedSectionIndex, on
         console.log('Context:', context);
       }
 
-      // Generate answer
+      // Generate answer with timing
+      const startTime = Date.now();
       const response = await llmService.generate(prompt, llmConfig);
+      const processingTime = Date.now() - startTime;
+
+      // Calculate cost
+      const cost = response.usage
+        ? llmService.calculateCost(
+            response.usage.promptTokens,
+            response.usage.completionTokens,
+            llmConfig.model,
+            llmConfig.provider
+          )
+        : 0;
 
       // Parse answer into sections
       const answerSections = parseAnswerIntoSections(response.content);
 
-      // Create new node
+      // Create new node with enhanced metadata
       const newNodeId = `node-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
       const nodeName = generateNodeName(parentNodeId);
       const newNode = {
         id: newNodeId,
         name: nodeName,
+        type: 'answer' as const,
         question: question.trim(),
         answer: response.content,
         answerSections,
         parentId: parentNodeId,
         childrenIds: [],
         context: context ? [context] : [],
+
+        // Enhanced metadata
+        model: response.model || llmConfig.model,
+        provider: response.provider || llmConfig.provider,
+        tokens: response.usage?.totalTokens,
+        cost,
+        metadata: {
+          temperature: llmConfig.temperature,
+          parameters: {
+            maxTokens: llmConfig.maxTokens,
+            topP: llmConfig.topP,
+            topK: llmConfig.topK,
+          },
+          processingTime,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        },
+        tags: [],
+        attachments: [],
+
+        // Position and UI state
         timestamp: Date.now(),
         position: parentNode
           ? {

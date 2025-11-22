@@ -1,4 +1,4 @@
-export type LLMProvider = 'openai' | 'anthropic' | 'custom';
+export type LLMProvider = 'openai' | 'anthropic' | 'gemini' | 'custom';
 
 export interface LLMConfig {
   provider: LLMProvider;
@@ -6,6 +6,8 @@ export interface LLMConfig {
   model: string;
   temperature: number;
   maxTokens: number;
+  topP?: number;
+  topK?: number;
 }
 
 export interface LLMResponse {
@@ -15,5 +17,29 @@ export interface LLMResponse {
     completionTokens: number;
     totalTokens: number;
   };
+  model?: string;
+  provider?: string;
+}
+
+export interface ModelInfo {
+  id: string;
+  name: string;
+  provider: LLMProvider;
+  contextWindow: number;
+  inputCostPer1kTokens: number;
+  outputCostPer1kTokens: number;
+  description?: string;
+}
+
+export interface ModelConfig {
+  temperature?: number;
+  maxTokens?: number;
+  topP?: number;
+  topK?: number;
+}
+
+export interface Message {
+  role: 'user' | 'assistant' | 'system';
+  content: string;
 }
 
