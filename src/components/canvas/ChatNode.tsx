@@ -1,11 +1,12 @@
 import { memo, useState, useEffect, useMemo } from 'react';
 import { Handle, Position, NodeProps } from 'reactflow';
-import { Plus, ChevronDown, ChevronRight, ArrowRight, Trash2, HelpCircle, MessageSquare, GitBranch, FileText, Link as LinkIcon, CheckSquare, Zap, DollarSign, Clock, Layers, Edit2, Check, Star } from 'lucide-react';
+import { Plus, ChevronDown, ChevronRight, ArrowRight, Trash2, HelpCircle, MessageSquare, GitBranch, FileText, Link as LinkIcon, CheckSquare, Zap, DollarSign, Clock, Layers, Edit2, Check, Star, Image as ImageIcon } from 'lucide-react';
 import { ConversationNode, NodeType } from '../../types/conversation';
 import { useConversationStore } from '../../store/conversationStore';
 import { parseAnswerIntoSections } from '../../utils/answerParser';
 import { ContextPanel } from '../context/ContextPanel';
 import { MarkdownRenderer } from '../common/MarkdownRenderer';
+import { ImageDisplay } from '../image/ImageDisplay';
 
 interface ChatNodeData extends ConversationNode {
   onSpawnChild: (nodeId: string, selectedSectionIndex?: number) => void;
@@ -54,6 +55,14 @@ const getNodeTypeStyle = (type: NodeType) => {
         bgColor: 'bg-red-50 dark:bg-red-900/20',
         borderColor: 'border-red-300 dark:border-red-700',
         label: 'Action',
+      };
+    case 'image':
+      return {
+        icon: ImageIcon,
+        color: 'text-pink-600 dark:text-pink-400',
+        bgColor: 'bg-pink-50 dark:bg-pink-900/20',
+        borderColor: 'border-pink-300 dark:border-pink-700',
+        label: 'Image',
       };
     default: // 'answer'
       return {
@@ -136,7 +145,7 @@ function ChatNodeComponent({ data, selected }: NodeProps<ChatNodeData>) {
   const nodeStyle = getNodeTypeStyle(data.type || 'answer');
   const NodeIcon = nodeStyle.icon;
 
-  const allNodeTypes: NodeType[] = ['question', 'answer', 'decision', 'summary', 'reference', 'action'];
+  const allNodeTypes: NodeType[] = ['question', 'answer', 'decision', 'summary', 'reference', 'action', 'image'];
 
   return (
     <div
@@ -276,19 +285,37 @@ function ChatNodeComponent({ data, selected }: NodeProps<ChatNodeData>) {
             <MarkdownRenderer content={data.question} className="text-sm" />
           </div>
 
-          {/* Answer with Sections */}
-          <div className="p-4">
-            <div className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-2 flex items-center justify-between">
-              <span>ANSWER</span>
-              {selectedSectionIndex !== null && (
-                <span className="text-xs text-blue-600 dark:text-blue-400 font-medium">
-                  Section {selectedSectionIndex + 1} selected
-                </span>
-              )}
+          {/* Answer with Sections or Image Display */}
+          {data.type === 'image' && data.imageData ? (
+            <div className="p-4">
+              <ImageDisplay
+                imageData={data.imageData}
+                onImageSelect={(index) => {
+                  // Update the current image index
+                  if (data.imageData) {
+                    updateNode(data.id, {
+                      imageData: {
+                        ...data.imageData,
+                        currentImageIndex: index,
+                      },
+                    });
+                  }
+                }}
+              />
             </div>
-            
-            <div className="space-y-3">
-              {sections.map((section, index) => {
+          ) : (
+            <div className="p-4">
+              <div className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-2 flex items-center justify-between">
+                <span>ANSWER</span>
+                {selectedSectionIndex !== null && (
+                  <span className="text-xs text-blue-600 dark:text-blue-400 font-medium">
+                    Section {selectedSectionIndex + 1} selected
+                  </span>
+                )}
+              </div>
+
+              <div className="space-y-3">
+                {sections.map((section, index) => {
                 const isSelected = selectedSectionIndex === index;
                 const hasChildren = sectionsWithChildren.usedSections.has(index);
                 const isHighlighted = isSelected || hasChildren;
@@ -355,7 +382,8 @@ function ChatNodeComponent({ data, selected }: NodeProps<ChatNodeData>) {
                 </div>
               </div>
             )}
-          </div>
+            </div>
+          )}
 
           {/* Action Buttons */}
           <div className="p-3 border-t border-gray-200 dark:border-gray-700 flex gap-2">

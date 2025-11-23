@@ -4,7 +4,7 @@ export interface AnswerSection {
   index: number;
 }
 
-export type NodeType = 'question' | 'answer' | 'decision' | 'summary' | 'reference' | 'action';
+export type NodeType = 'question' | 'answer' | 'decision' | 'summary' | 'reference' | 'action' | 'image';
 
 export interface Attachment {
   id: string;
@@ -14,6 +14,35 @@ export interface Attachment {
   filename?: string;
   mimeType?: string;
   size?: number;
+}
+
+export interface ImageGenerationConfig {
+  model: 'imagen-3.0-generate-001' | 'imagen-3.0-fast-generate-001';
+  aspectRatio: '1:1' | '3:4' | '4:3' | '9:16' | '16:9';
+  prompt: string;
+  negativePrompt?: string;
+  numberOfImages?: number; // 1-4 for single generation
+  personGeneration?: 'dont_allow' | 'allow_adult';
+  safetyFilterLevel?: 'block_low_and_above' | 'block_medium_and_above' | 'block_only_high';
+  addWatermark?: boolean;
+}
+
+export interface ImageEditHistoryEntry {
+  id: string;
+  timestamp: number;
+  imageUrl: string;
+  prompt: string;
+  config: ImageGenerationConfig;
+  parentImageId?: string; // For tracking iterations
+}
+
+export interface ImageNodeData {
+  generatedImages: string[]; // Array of image URLs
+  currentImageIndex: number; // Which image is currently displayed
+  generationConfig: ImageGenerationConfig;
+  editHistory: ImageEditHistoryEntry[];
+  isGenerating?: boolean;
+  generationError?: string;
 }
 
 export interface NodeMetadata {
@@ -43,6 +72,9 @@ export interface ConversationNode {
   metadata?: NodeMetadata;
   attachments?: Attachment[];
   tags?: string[];
+
+  // Image generation data (for type === 'image')
+  imageData?: ImageNodeData;
 
   // Position and UI state
   timestamp: number;

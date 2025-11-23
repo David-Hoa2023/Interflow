@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import ConversationCanvas from './components/canvas/ConversationCanvas';
 import InferenceWindow from './components/inference/InferenceWindow';
+import ImageGenerationWindow from './components/inference/ImageGenerationWindow';
 import SummaryView from './components/summary/SummaryView';
 import SessionManager from './components/session/SessionManager';
 import { SettingsPanel } from './components/settings/SettingsPanel';
@@ -21,6 +22,7 @@ function App() {
   const [showExport, setShowExport] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
   const [showBookmarks, setShowBookmarks] = useState(false);
+  const [showImageGeneration, setShowImageGeneration] = useState(false);
   const [highlightedNodeId, setHighlightedNodeId] = useState<string | null>(null);
   const { theme, setTheme, loadFromStorage } = useConfigStore();
   const { clearAll, loadFromStorage: loadConversations, applyAutoLayout } = useConversationStore();
@@ -132,6 +134,12 @@ function App() {
             New Question
           </button>
           <button
+            onClick={() => setShowImageGeneration(true)}
+            className="px-4 py-2 bg-pink-500 hover:bg-pink-600 text-white rounded-lg transition-colors text-sm font-medium"
+          >
+            🎨 Generate Image
+          </button>
+          <button
             onClick={handleClearCanvas}
             className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg transition-colors text-sm font-medium"
           >
@@ -197,6 +205,14 @@ function App() {
           {/* Session Manager Modal */}
           {showSessionManager && (
             <SessionManager onClose={() => setShowSessionManager(false)} />
+          )}
+
+          {/* Image Generation Modal */}
+          {showImageGeneration && (
+            <ImageGenerationWindow
+              parentNodeId={parentNodeId}
+              onComplete={() => setShowImageGeneration(false)}
+            />
           )}
         </div>
       );
