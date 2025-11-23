@@ -1,9 +1,10 @@
 import { useState, useRef, useEffect } from 'react';
-import { Send, Loader2, Image as ImageIcon, Settings } from 'lucide-react';
+import { Send, Loader2, Image as ImageIcon, Settings, Layers, FileText } from 'lucide-react';
 import { useConversationStore } from '../../store/conversationStore';
 import { useConfigStore } from '../../store/configStore';
 import { imageGenerationService } from '../../services/image/ImageGenerationService';
-import { ImageGenerationConfig } from '../../types/conversation';
+import { ImageGenerationConfig, ImageCompositionSource } from '../../types/conversation';
+import { ImageCompositionBuilder, TemplateSelector } from '../image';
 
 interface ImageGenerationWindowProps {
   parentNodeId: string | null;
@@ -16,6 +17,7 @@ export default function ImageGenerationWindow({ parentNodeId, onComplete }: Imag
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showAdvanced, setShowAdvanced] = useState(false);
+  const [showTemplates, setShowTemplates] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const { addNode, generateNodeName } = useConversationStore();
   const { llmConfig } = useConfigStore();
@@ -28,9 +30,25 @@ export default function ImageGenerationWindow({ parentNodeId, onComplete }: Imag
   const [safetyFilterLevel, setSafetyFilterLevel] = useState<ImageGenerationConfig['safetyFilterLevel']>('block_medium_and_above');
   const [addWatermark, setAddWatermark] = useState(false);
 
+  // Multi-image composition
+  const [useComposition, setUseComposition] = useState(false);
+  const [compositionSources, setCompositionSources] = useState<ImageCompositionSource[]>([]);
+  const [compositionMode, setCompositionMode] = useState<'blend' | 'collage' | 'style-transfer' | 'combine'>('blend');
+
   useEffect(() => {
     textareaRef.current?.focus();
   }, [parentNodeId]);
+
+  const handleTemplateSelect = (templatePrompt: string, templateConfig: Partial<ImageGenerationConfig>) => {
+    setPrompt(templatePrompt);
+    if (templateConfig.aspectRatio) setAspectRatio(templateConfig.aspectRatio);
+    if (templateConfig.model) setModel(templateConfig.model);
+    if (templateConfig.numberOfImages) setNumberOfImages(templateConfig.numberOfImages);
+    if (templateConfig.negativePrompt) setNegativePrompt(templateConfig.negativePrompt);
+    if (templateConfig.personGeneration) setPersonGeneration(templateConfig.personGeneration);
+    if (templateConfig.safetyFilterLevel) setSafetyFilterLevel(templateConfig.safetyFilterLevel);
+    if (templateConfig.addWatermark !== undefined) setAddWatermark(templateConfig.addWatermark);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -46,6 +64,9 @@ export default function ImageGenerationWindow({ parentNodeId, onComplete }: Imag
       personGeneration,
       safetyFilterLevel,
       addWatermark,
+      // Add composition data if enabled
+      compositionSources: useComposition ? compositionSources : undefined,
+      compositionMode: useComposition ? compositionMode : undefined,
     };
 
     const validation = imageGenerationService.validateConfig(config);
@@ -167,9 +188,19 @@ export default function ImageGenerationWindow({ parentNodeId, onComplete }: Imag
               rows={4}
               disabled={isLoading}
             />
-            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-              {prompt.length} / 5000 characters
-            </p>
+            <div className="flex items-center justify-between mt-1">
+              <p className="text-xs text-gray-500 dark:text-gray-400">
+                {prompt.length} / 5000 characters
+              </p>
+              <button
+                type="button"
+                onClick={() => setShowTemplates(true)}
+                className="flex items-center gap-1 text-xs text-pink-600 dark:text-pink-400 hover:underline"
+              >
+                <FileText className="w-3 h-3" />
+                Use Template
+              </button>
+            </div>
           </div>
 
           {/* Quick Settings */}
@@ -209,23 +240,46 @@ export default function ImageGenerationWindow({ parentNodeId, onComplete }: Imag
           </div>
 
           {/* Number of Images */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Number of Images: {numberOfImages}
-            </label>
-            <input
-              type="range"
-              min="1"
-              max="4"
-              value={numberOfImages}
-              onChange={(e) => setNumberOfImages(parseInt(e.target.value))}
-              className="w-full"
-              disabled={isLoading}
+          {!useComposition && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Number of Images: {numberOfImages}
+              </label>
+              <input
+                type="range"
+                min="1"
+                max="4"
+                value={numberOfImages}
+                onChange={(e) => setNumberOfImages(parseInt(e.target.value))}
+                className="w-full"
+                disabled={isLoading}
+              />
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                Generate 1-4 images per request
+              </p>
+            </div>
+          )}
+
+          {/* Multi-Image Composition Toggle */}
+          <button
+            type="button"
+            onClick={() => setUseComposition(!useComposition)}
+            className="flex items-center gap-2 text-sm text-pink-600 dark:text-pink-400 hover:underline"
+          >
+            <Layers className="w-4 h-4" />
+            {useComposition ? 'Disable' : 'Enable'} Multi-Image Composition
+          </button>
+
+          {/* Composition Builder */}
+          {useComposition && (
+            <ImageCompositionBuilder
+              compositionSources={compositionSources}
+              compositionMode={compositionMode}
+              onSourcesChange={setCompositionSources}
+              onModeChange={setCompositionMode}
+              maxImages={14}
             />
-            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-              Generate 1-4 images per request
-            </p>
-          </div>
+          )}
 
           {/* Advanced Settings Toggle */}
           <button
@@ -342,6 +396,14 @@ export default function ImageGenerationWindow({ parentNodeId, onComplete }: Imag
           </div>
         </form>
       </div>
+
+      {/* Template Selector Modal */}
+      {showTemplates && (
+        <TemplateSelector
+          onSelectTemplate={handleTemplateSelect}
+          onClose={() => setShowTemplates(false)}
+        />
+      )}
     </div>
   );
 }

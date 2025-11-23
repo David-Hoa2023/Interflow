@@ -208,6 +208,19 @@ export class ImageGenerationService {
       errors.push('Number of images must be between 1 and 4');
     }
 
+    // Validate composition sources
+    if (config.compositionSources) {
+      if (config.compositionSources.length === 0) {
+        errors.push('At least one composition source is required when using composition mode');
+      }
+      if (config.compositionSources.length > 14) {
+        errors.push('Maximum 14 composition sources allowed');
+      }
+      if (config.compositionSources.length === 1 && config.compositionMode !== 'style-transfer') {
+        errors.push('Composition requires at least 2 images (except for style-transfer mode)');
+      }
+    }
+
     return {
       valid: errors.length === 0,
       errors,

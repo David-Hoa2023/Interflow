@@ -16,6 +16,13 @@ export interface Attachment {
   size?: number;
 }
 
+export interface ImageCompositionSource {
+  id: string;
+  imageUrl: string;
+  weight?: number; // Influence weight (0-1)
+  description?: string; // What this image contributes
+}
+
 export interface ImageGenerationConfig {
   model: 'imagen-3.0-generate-001' | 'imagen-3.0-fast-generate-001';
   aspectRatio: '1:1' | '3:4' | '4:3' | '9:16' | '16:9';
@@ -25,6 +32,10 @@ export interface ImageGenerationConfig {
   personGeneration?: 'dont_allow' | 'allow_adult';
   safetyFilterLevel?: 'block_low_and_above' | 'block_medium_and_above' | 'block_only_high';
   addWatermark?: boolean;
+
+  // Multi-image composition (up to 14 images)
+  compositionSources?: ImageCompositionSource[];
+  compositionMode?: 'blend' | 'collage' | 'style-transfer' | 'combine';
 }
 
 export interface ImageEditHistoryEntry {
