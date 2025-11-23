@@ -50,6 +50,7 @@ export interface ConversationNode {
   isCollapsed: boolean;
   selectedSectionIndexFromParent?: number; // Index of section selected from parent when spawning this node
   includeInContext?: boolean; // Whether this node should be included in context (default: true)
+  isBookmarked?: boolean; // Whether this node is bookmarked for quick access
 }
 
 export interface ConversationTree {

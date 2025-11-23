@@ -6,6 +6,8 @@ import SessionManager from './components/session/SessionManager';
 import { SettingsPanel } from './components/settings/SettingsPanel';
 import { ExportPanel } from './components/export/ExportPanel';
 import { SearchPanel } from './components/search/SearchPanel';
+import { BreadcrumbNav } from './components/navigation/BreadcrumbNav';
+import { BookmarkPanel } from './components/navigation/BookmarkPanel';
 import { useConfigStore } from './store/configStore';
 import { useConversationStore } from './store/conversationStore';
 
@@ -18,6 +20,8 @@ function App() {
   const [showSettings, setShowSettings] = useState(false);
   const [showExport, setShowExport] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
+  const [showBookmarks, setShowBookmarks] = useState(false);
+  const [highlightedNodeId, setHighlightedNodeId] = useState<string | null>(null);
   const { theme, setTheme, loadFromStorage } = useConfigStore();
   const { clearAll, loadFromStorage: loadConversations, applyAutoLayout } = useConversationStore();
 
@@ -91,8 +95,14 @@ function App() {
             💾 Sessions
           </button>
           <button
-            onClick={() => setShowSearch(true)}
+            onClick={() => setShowBookmarks(true)}
             className="px-4 py-2 bg-yellow-500 hover:bg-yellow-600 text-white rounded-lg transition-colors text-sm font-medium"
+          >
+            ⭐ Bookmarks
+          </button>
+          <button
+            onClick={() => setShowSearch(true)}
+            className="px-4 py-2 bg-cyan-500 hover:bg-cyan-600 text-white rounded-lg transition-colors text-sm font-medium"
           >
             🔍 Search
           </button>
@@ -136,9 +146,18 @@ function App() {
         </div>
       </header>
 
+      {/* Breadcrumb Navigation */}
+      <BreadcrumbNav
+        currentNodeId={highlightedNodeId}
+        onNavigate={(nodeId) => setHighlightedNodeId(nodeId)}
+      />
+
       {/* Canvas */}
       <div className="flex-1 relative" style={{ paddingBottom: '200px' }}>
-        <ConversationCanvas onSpawnChild={handleSpawnChild} />
+        <ConversationCanvas
+          onSpawnChild={handleSpawnChild}
+          highlightedPath={highlightedNodeId}
+        />
       </div>
 
       {/* Inference Window */}
@@ -157,6 +176,17 @@ function App() {
           {/* Search Modal */}
           {showSearch && (
             <SearchPanel onClose={() => setShowSearch(false)} />
+          )}
+
+          {/* Bookmark Modal */}
+          {showBookmarks && (
+            <BookmarkPanel
+              onClose={() => setShowBookmarks(false)}
+              onNavigateToNode={(nodeId) => {
+                setHighlightedNodeId(nodeId);
+                setShowBookmarks(false);
+              }}
+            />
           )}
 
           {/* Summary Modal */}

@@ -24,10 +24,11 @@ const nodeTypes = {
 
 interface ConversationCanvasProps {
   onSpawnChild: (nodeId: string, selectedSectionIndex?: number) => void;
+  highlightedPath?: string | null;
 }
 
-function ConversationCanvasInner({ onSpawnChild }: ConversationCanvasProps) {
-  const { tree, loadFromStorage } = useConversationStore();
+function ConversationCanvasInner({ onSpawnChild, highlightedPath }: ConversationCanvasProps) {
+  const { tree, loadFromStorage, getNodeChain } = useConversationStore();
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
   const { fitView, getNode } = useReactFlow();
@@ -53,7 +54,16 @@ function ConversationCanvasInner({ onSpawnChild }: ConversationCanvasProps) {
     const flowNodes: Node[] = [];
     const flowEdges: Edge[] = [];
 
+    // Get highlighted path node IDs
+    const highlightedNodeIds = new Set<string>();
+    if (highlightedPath) {
+      const chain = getNodeChain(highlightedPath);
+      chain.forEach(n => highlightedNodeIds.add(n.id));
+    }
+
     tree.nodes.forEach((node) => {
+      const isInHighlightedPath = highlightedNodeIds.has(node.id);
+
       // Create a new position object to ensure React Flow detects the change
       const nodePosition = { x: node.position.x, y: node.position.y };
       flowNodes.push({
@@ -65,24 +75,31 @@ function ConversationCanvasInner({ onSpawnChild }: ConversationCanvasProps) {
           onSpawnChild,
           onFocusChild: handleFocusNode,
         },
+        style: isInHighlightedPath ? {
+          boxShadow: '0 0 20px rgba(59, 130, 246, 0.6)',
+          border: '2px solid #3b82f6',
+        } : undefined,
       });
 
       // Create edge from parent to this node
       if (node.parentId) {
+        const isEdgeInPath = isInHighlightedPath && highlightedNodeIds.has(node.parentId);
         const hasSelectedSection = node.selectedSectionIndexFromParent !== undefined;
         const sectionNumber = hasSelectedSection ? node.selectedSectionIndexFromParent! + 1 : undefined;
+
         flowEdges.push({
           id: `e${node.parentId}-${node.id}`,
           source: node.parentId,
           target: node.id,
           type: 'smoothstep',
-          animated: true,
+          animated: isEdgeInPath || hasSelectedSection,
           style: {
-            stroke: hasSelectedSection ? '#3b82f6' : '#94a3b8',
-            strokeWidth: hasSelectedSection ? 3 : 2,
+            stroke: isEdgeInPath ? '#3b82f6' : hasSelectedSection ? '#3b82f6' : '#94a3b8',
+            strokeWidth: isEdgeInPath ? 4 : hasSelectedSection ? 3 : 2,
+            opacity: isEdgeInPath ? 1 : 0.6,
           },
-          label: hasSelectedSection && sectionNumber !== undefined 
-            ? `📌 Section ${sectionNumber}` 
+          label: hasSelectedSection && sectionNumber !== undefined
+            ? `📌 Section ${sectionNumber}`
             : undefined,
           labelStyle: {
             fill: '#3b82f6',
@@ -101,7 +118,7 @@ function ConversationCanvasInner({ onSpawnChild }: ConversationCanvasProps) {
 
     setNodes(flowNodes);
     setEdges(flowEdges);
-  }, [tree, setNodes, setEdges, onSpawnChild, handleFocusNode]);
+  }, [tree, setNodes, setEdges, onSpawnChild, handleFocusNode, highlightedPath, getNodeChain]);
 
   // Listen for auto-layout events and fit view
   useEffect(() => {
@@ -188,10 +205,10 @@ function ConversationCanvasInner({ onSpawnChild }: ConversationCanvasProps) {
   );
 }
 
-export default function ConversationCanvas({ onSpawnChild }: ConversationCanvasProps) {
+export default function ConversationCanvas({ onSpawnChild, highlightedPath }: ConversationCanvasProps) {
   return (
     <ReactFlowProvider>
-      <ConversationCanvasInner onSpawnChild={onSpawnChild} />
+      <ConversationCanvasInner onSpawnChild={onSpawnChild} highlightedPath={highlightedPath} />
     </ReactFlowProvider>
   );
 }

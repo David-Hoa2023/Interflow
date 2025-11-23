@@ -1,6 +1,6 @@
 import { memo, useState, useEffect, useMemo } from 'react';
 import { Handle, Position, NodeProps } from 'reactflow';
-import { Plus, ChevronDown, ChevronRight, ArrowRight, Trash2, HelpCircle, MessageSquare, GitBranch, FileText, Link as LinkIcon, CheckSquare, Zap, DollarSign, Clock, Layers, Edit2, Check } from 'lucide-react';
+import { Plus, ChevronDown, ChevronRight, ArrowRight, Trash2, HelpCircle, MessageSquare, GitBranch, FileText, Link as LinkIcon, CheckSquare, Zap, DollarSign, Clock, Layers, Edit2, Check, Star } from 'lucide-react';
 import { ConversationNode, NodeType } from '../../types/conversation';
 import { useConversationStore } from '../../store/conversationStore';
 import { parseAnswerIntoSections } from '../../utils/answerParser';
@@ -124,6 +124,10 @@ function ChatNodeComponent({ data, selected }: NodeProps<ChatNodeData>) {
     }
   };
 
+  const handleToggleBookmark = () => {
+    updateNode(data.id, { isBookmarked: !data.isBookmarked });
+  };
+
   const handleTypeChange = (newType: NodeType) => {
     updateNode(data.id, { type: newType });
     setIsEditingType(false);
@@ -212,6 +216,17 @@ function ChatNodeComponent({ data, selected }: NodeProps<ChatNodeData>) {
           <div className="text-xs text-gray-500 dark:text-gray-400">
             {new Date(data.timestamp).toLocaleTimeString()}
           </div>
+          <button
+            onClick={handleToggleBookmark}
+            className={`p-1 rounded transition-colors ${
+              data.isBookmarked
+                ? 'text-yellow-600 dark:text-yellow-400 hover:bg-yellow-100 dark:hover:bg-yellow-900/30'
+                : 'text-gray-400 dark:text-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700'
+            }`}
+            title={data.isBookmarked ? 'Remove bookmark' : 'Add bookmark'}
+          >
+            <Star className={`w-4 h-4 ${data.isBookmarked ? 'fill-current' : ''}`} />
+          </button>
           <button
             onClick={handleDelete}
             className="p-1 hover:bg-red-100 dark:hover:bg-red-900/30 rounded transition-colors text-red-600 dark:text-red-400"
