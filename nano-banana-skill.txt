@@ -1,0 +1,784 @@
+Great! I found the Gemini Image Generation skill in your project knowledge. Here's how to integrate it into InferFlow:
+
+# Integrating Gemini Image Generation into InferFlow
+
+## Overview
+
+This integration will allow InferFlow nodes to generate and edit images using Google's Gemini API, enabling visual exploration alongside text-based conversations. This is particularly powerful for creative workflows, product design, documentation, and visual teaching materials.
+
+## Integration Strategy
+
+### **Phase 1: Core Integration**
+
+#### Task 1: Add Image Generation Node Type
+
+**File:** `src/types/nodes.ts`
+
+```typescript
+interface ImageNodeData extends BaseNodeData {
+  type: 'image_generation';
+  prompt: string;
+  imageUrl?: string;
+  localPath?: string;
+  model: 'gemini-2.5-flash-image' | 'gemini-3-pro-image-preview';
+  config: {
+    aspectRatio?: '1:1' | '2:3' | '3:2' | '3:4' | '4:3' | '16:9' | '9:16' | '21:9';
+    imageSize?: '1K' | '2K' | '4K';
+    googleSearch?: boolean;
+  };
+  metadata: {
+    generatedAt: Date;
+    processingTime: number;
+    editHistory?: ImageEdit[];
+  };
+}
+
+interface ImageEdit {
+  timestamp: Date;
+  instruction: string;
+  previousImageUrl: string;
+}
+```
+
+#### Task 2: Install Dependencies
+
+```bash
+npm install google-genai
+npm install --save-dev @types/node
+```
+
+#### Task 3: Create Gemini Image Service
+
+**File:** `src/services/geminiImageService.ts`
+
+```typescript
+import { Client } from '@google/genai';
+import type { GenerateContentConfig } from '@google/genai/types';
+
+export class GeminiImageService {
+  private client: Client;
+  private model: string;
+
+  constructor(apiKey: string, model = 'gemini-2.5-flash-image') {
+    this.client = new Client({ apiKey });
+    this.model = model;
+  }
+
+  async generateImage(
+    prompt: string,
+    config?: {
+      aspectRatio?: string;
+      imageSize?: string;
+      googleSearch?: boolean;
+    }
+  ): Promise<{ imageBlob: Blob; text?: string }> {
+    const contentConfig: GenerateContentConfig = {
+      responseModalities: ['TEXT', 'IMAGE'],
+    };
+
+    if (config?.aspectRatio || config?.imageSize) {
+      contentConfig.imageConfig = {
+        aspectRatio: config.aspectRatio,
+        imageSize: config.imageSize,
+      };
+    }
+
+    if (config?.googleSearch) {
+      contentConfig.tools = [{ google_search: {} }];
+    }
+
+    const response = await this.client.models.generateContent({
+      model: this.model,
+      contents: [prompt],
+      config: contentConfig,
+    });
+
+    let text: string | undefined;
+    let imageBlob: Blob | undefined;
+
+    for (const part of response.parts) {
+      if (part.text) {
+        text = part.text;
+      } else if (part.inline_data) {
+        const image = part.as_image();
+        // Convert PIL Image to Blob for web
+        imageBlob = await this.imageToBlob(image);
+      }
+    }
+
+    if (!imageBlob) {
+      throw new Error('No image generated');
+    }
+
+    return { imageBlob, text };
+  }
+
+  async editImage(
+    imageBlob: Blob,
+    instruction: string,
+    config?: {
+      aspectRatio?: string;
+      imageSize?: string;
+    }
+  ): Promise<{ imageBlob: Blob; text?: string }> {
+    const contentConfig: GenerateContentConfig = {
+      responseModalities: ['TEXT', 'IMAGE'],
+    };
+
+    if (config?.aspectRatio || config?.imageSize) {
+      contentConfig.imageConfig = {
+        aspectRatio: config.aspectRatio,
+        imageSize: config.imageSize,
+      };
+    }
+
+    // Convert Blob to format Gemini expects
+    const imageData = await this.blobToImageData(imageBlob);
+
+    const response = await this.client.models.generateContent({
+      model: this.model,
+      contents: [instruction, imageData],
+      config: contentConfig,
+    });
+
+    let text: string | undefined;
+    let resultBlob: Blob | undefined;
+
+    for (const part of response.parts) {
+      if (part.text) {
+        text = part.text;
+      } else if (part.inline_data) {
+        const image = part.as_image();
+        resultBlob = await this.imageToBlob(image);
+      }
+    }
+
+    if (!resultBlob) {
+      throw new Error('No edited image generated');
+    }
+
+    return { imageBlob: resultBlob, text };
+  }
+
+  async composeImages(
+    instruction: string,
+    imageBlobs: Blob[],
+    config?: {
+      aspectRatio?: string;
+      imageSize?: string;
+    }
+  ): Promise<{ imageBlob: Blob; text?: string }> {
+    if (imageBlobs.length > 14) {
+      throw new Error('Maximum 14 reference images allowed');
+    }
+
+    const contentConfig: GenerateContentConfig = {
+      responseModalities: ['TEXT', 'IMAGE'],
+    };
+
+    if (config?.aspectRatio || config?.imageSize) {
+      contentConfig.imageConfig = {
+        aspectRatio: config.aspectRatio,
+        imageSize: config.imageSize,
+      };
+    }
+
+    // Build contents array with instruction and all images
+    const contents = [instruction];
+    for (const blob of imageBlobs) {
+      const imageData = await this.blobToImageData(blob);
+      contents.push(imageData);
+    }
+
+    const response = await this.client.models.generateContent({
+      model: 'gemini-3-pro-image-preview', // Composition requires Pro
+      contents,
+      config: contentConfig,
+    });
+
+    let text: string | undefined;
+    let resultBlob: Blob | undefined;
+
+    for (const part of response.parts) {
+      if (part.text) {
+        text = part.text;
+      } else if (part.inline_data) {
+        const image = part.as_image();
+        resultBlob = await this.imageToBlob(image);
+      }
+    }
+
+    if (!resultBlob) {
+      throw new Error('No composed image generated');
+    }
+
+    return { imageBlob: resultBlob, text };
+  }
+
+  private async imageToBlob(image: any): Promise<Blob> {
+    // Implementation depends on Gemini SDK's image format
+    // This is a placeholder - adjust based on actual SDK
+    throw new Error('Not implemented');
+  }
+
+  private async blobToImageData(blob: Blob): Promise<any> {
+    // Convert Blob to format Gemini SDK expects
+    // This is a placeholder - adjust based on actual SDK
+    throw new Error('Not implemented');
+  }
+}
+```
+
+#### Task 4: Create Image Generation Node Component
+
+**File:** `src/components/nodes/ImageGenerationNode.tsx`
+
+```typescript
+import React, { useState } from 'react';
+import { Handle, Position } from '@xyflow/react';
+import { GeminiImageService } from '../../services/geminiImageService';
+
+interface ImageGenerationNodeProps {
+  data: ImageNodeData;
+  id: string;
+}
+
+export const ImageGenerationNode: React.FC<ImageGenerationNodeProps> = ({
+  data,
+  id,
+}) => {
+  const [isEditing, setIsEditing] = useState(false);
+  const [editInstruction, setEditInstruction] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+
+  const handleEdit = async () => {
+    if (!editInstruction.trim()) return;
+
+    setIsLoading(true);
+    try {
+      const apiKey = localStorage.getItem('GEMINI_API_KEY');
+      if (!apiKey) {
+        alert('Please set GEMINI_API_KEY in settings');
+        return;
+      }
+
+      const service = new GeminiImageService(apiKey, data.model);
+      
+      // Get current image blob (from data.imageUrl)
+      const response = await fetch(data.imageUrl!);
+      const blob = await response.blob();
+
+      const result = await service.editImage(blob, editInstruction, {
+        aspectRatio: data.config.aspectRatio,
+        imageSize: data.config.imageSize,
+      });
+
+      // Save edited image and update node
+      const imageUrl = URL.createObjectURL(result.imageBlob);
+      
+      // Update node data through your state management
+      // This would trigger a node update in your InferFlow store
+      updateNodeData(id, {
+        imageUrl,
+        metadata: {
+          ...data.metadata,
+          editHistory: [
+            ...(data.metadata.editHistory || []),
+            {
+              timestamp: new Date(),
+              instruction: editInstruction,
+              previousImageUrl: data.imageUrl!,
+            },
+          ],
+        },
+      });
+
+      setEditInstruction('');
+      setIsEditing(false);
+    } catch (error) {
+      console.error('Image edit failed:', error);
+      alert(`Failed to edit image: ${error.message}`);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleBranchWithEdit = () => {
+    // Create a new child node with edit capabilities
+    setIsEditing(true);
+  };
+
+  return (
+    <div className="image-generation-node">
+      <Handle type="target" position={Position.Top} />
+      
+      <div className="node-header">
+        <span className="node-type-icon">🎨</span>
+        <span className="node-title">Image: {data.prompt.slice(0, 30)}...</span>
+      </div>
+
+      <div className="node-content">
+        {data.imageUrl && (
+          <img 
+            src={data.imageUrl} 
+            alt={data.prompt}
+            className="generated-image"
+            style={{ maxWidth: '100%', borderRadius: '8px' }}
+          />
+        )}
+        
+        <div className="prompt-text">
+          <strong>Prompt:</strong> {data.prompt}
+        </div>
+
+        <div className="image-metadata">
+          <span>Model: {data.model === 'gemini-2.5-flash-image' ? 'Flash' : 'Pro'}</span>
+          {data.config.aspectRatio && (
+            <span> | Ratio: {data.config.aspectRatio}</span>
+          )}
+          {data.config.imageSize && (
+            <span> | Size: {data.config.imageSize}</span>
+          )}
+        </div>
+
+        {data.metadata.editHistory && data.metadata.editHistory.length > 0 && (
+          <div className="edit-history">
+            <strong>Edits:</strong> {data.metadata.editHistory.length}
+          </div>
+        )}
+
+        {isEditing && (
+          <div className="edit-controls">
+            <input
+              type="text"
+              value={editInstruction}
+              onChange={(e) => setEditInstruction(e.target.value)}
+              placeholder="Describe the edit (e.g., 'Add a sunset')"
+              className="edit-input"
+            />
+            <div className="edit-buttons">
+              <button onClick={handleEdit} disabled={isLoading}>
+                {isLoading ? 'Editing...' : 'Apply Edit'}
+              </button>
+              <button onClick={() => setIsEditing(false)}>Cancel</button>
+            </div>
+          </div>
+        )}
+      </div>
+
+      <div className="node-actions">
+        <button 
+          className="edit-button"
+          onClick={handleBranchWithEdit}
+          title="Edit this image in a new branch"
+        >
+          ✏️ Edit
+        </button>
+        <button 
+          className="branch-button"
+          onClick={() => spawnNewBranch(id)}
+          title="Create new variation"
+        >
+          + Variation
+        </button>
+      </div>
+
+      <Handle type="source" position={Position.Bottom} />
+    </div>
+  );
+};
+```
+
+#### Task 5: Add Image Generation to Inference Window
+
+**File:** `src/components/InferenceWindow.tsx`
+
+```typescript
+import React, { useState } from 'react';
+import { GeminiImageService } from '../services/geminiImageService';
+
+export const InferenceWindow: React.FC = () => {
+  const [prompt, setPrompt] = useState('');
+  const [mode, setMode] = useState<'text' | 'image'>('text');
+  const [imageConfig, setImageConfig] = useState({
+    model: 'gemini-2.5-flash-image',
+    aspectRatio: '1:1',
+    imageSize: '1K',
+  });
+
+  const handleGenerateImage = async () => {
+    if (!prompt.trim()) return;
+
+    try {
+      const apiKey = localStorage.getItem('GEMINI_API_KEY');
+      if (!apiKey) {
+        alert('Please set GEMINI_API_KEY in settings');
+        return;
+      }
+
+      const service = new GeminiImageService(apiKey, imageConfig.model);
+      
+      const result = await service.generateImage(prompt, {
+        aspectRatio: imageConfig.aspectRatio,
+        imageSize: imageConfig.imageSize,
+      });
+
+      // Create image URL from blob
+      const imageUrl = URL.createObjectURL(result.imageBlob);
+
+      // Create new image node in the canvas
+      createImageNode({
+        type: 'image_generation',
+        prompt,
+        imageUrl,
+        model: imageConfig.model,
+        config: imageConfig,
+        metadata: {
+          generatedAt: new Date(),
+          processingTime: 0, // Track if needed
+        },
+      });
+
+      setPrompt('');
+    } catch (error) {
+      console.error('Image generation failed:', error);
+      alert(`Failed to generate image: ${error.message}`);
+    }
+  };
+
+  return (
+    <div className="inference-window">
+      <div className="mode-selector">
+        <button 
+          className={mode === 'text' ? 'active' : ''}
+          onClick={() => setMode('text')}
+        >
+          💬 Text
+        </button>
+        <button 
+          className={mode === 'image' ? 'active' : ''}
+          onClick={() => setMode('image')}
+        >
+          🎨 Image
+        </button>
+      </div>
+
+      {mode === 'image' && (
+        <div className="image-controls">
+          <select
+            value={imageConfig.model}
+            onChange={(e) => setImageConfig({ ...imageConfig, model: e.target.value })}
+          >
+            <option value="gemini-2.5-flash-image">Flash (Fast)</option>
+            <option value="gemini-3-pro-image-preview">Pro (High Quality)</option>
+          </select>
+
+          <select
+            value={imageConfig.aspectRatio}
+            onChange={(e) => setImageConfig({ ...imageConfig, aspectRatio: e.target.value })}
+          >
+            <option value="1:1">Square (1:1)</option>
+            <option value="16:9">Landscape (16:9)</option>
+            <option value="9:16">Portrait (9:16)</option>
+            <option value="4:3">Classic (4:3)</option>
+          </select>
+
+          <select
+            value={imageConfig.imageSize}
+            onChange={(e) => setImageConfig({ ...imageConfig, imageSize: e.target.value })}
+          >
+            <option value="1K">1K</option>
+            <option value="2K">2K</option>
+            {imageConfig.model === 'gemini-3-pro-image-preview' && (
+              <option value="4K">4K</option>
+            )}
+          </select>
+        </div>
+      )}
+
+      <textarea
+        value={prompt}
+        onChange={(e) => setPrompt(e.target.value)}
+        placeholder={
+          mode === 'text' 
+            ? 'Ask a question...' 
+            : 'Describe the image you want to generate...'
+        }
+        className="prompt-input"
+      />
+
+      <button 
+        onClick={mode === 'text' ? handleSendMessage : handleGenerateImage}
+        className="send-button"
+      >
+        {mode === 'text' ? 'Send' : 'Generate Image'}
+      </button>
+    </div>
+  );
+};
+```
+
+### **Phase 2: Advanced Features**
+
+#### Task 6: Multi-Image Composition
+
+Create a node that allows users to select multiple image nodes and compose them:
+
+```typescript
+interface CompositionNodeData {
+  type: 'image_composition';
+  instruction: string;
+  sourceNodeIds: string[];
+  resultImageUrl: string;
+}
+
+// In your canvas component
+const handleComposeImages = async (selectedNodeIds: string[]) => {
+  const imageNodes = selectedNodeIds
+    .map(id => getNodeById(id))
+    .filter(node => node.data.type === 'image_generation');
+
+  if (imageNodes.length < 2 || imageNodes.length > 14) {
+    alert('Select 2-14 image nodes to compose');
+    return;
+  }
+
+  const instruction = prompt('Describe how to compose these images:');
+  if (!instruction) return;
+
+  // Fetch all image blobs
+  const blobs = await Promise.all(
+    imageNodes.map(async node => {
+      const response = await fetch(node.data.imageUrl);
+      return response.blob();
+    })
+  );
+
+  const service = new GeminiImageService(apiKey, 'gemini-3-pro-image-preview');
+  const result = await service.composeImages(instruction, blobs);
+
+  createCompositionNode({
+    instruction,
+    sourceNodeIds: selectedNodeIds,
+    resultImageUrl: URL.createObjectURL(result.imageBlob),
+  });
+};
+```
+
+#### Task 7: Image Templates
+
+Create pre-built image generation templates:
+
+```typescript
+const imageTemplates = {
+  logo: {
+    name: 'Logo Design',
+    prompt: 'Create a professional logo for {{company_name}}, {{style}} style, {{colors}}',
+    config: { aspectRatio: '1:1', imageSize: '2K', model: 'gemini-3-pro-image-preview' },
+  },
+  productMockup: {
+    name: 'Product Mockup',
+    prompt: 'Studio-lit product photo of {{product}}, white background, professional lighting',
+    config: { aspectRatio: '4:3', imageSize: '2K' },
+  },
+  illustration: {
+    name: 'Illustration',
+    prompt: '{{description}}, {{style}} style, vibrant colors, detailed',
+    config: { aspectRatio: '16:9', imageSize: '2K' },
+  },
+  diagram: {
+    name: 'Technical Diagram',
+    prompt: 'Clean technical diagram showing {{concept}}, labeled, isometric view',
+    config: { aspectRatio: '16:9', imageSize: '1K' },
+  },
+};
+```
+
+#### Task 8: Image-to-Text Analysis
+
+Add ability to analyze generated images:
+
+```typescript
+const analyzeImage = async (imageUrl: string, question: string) => {
+  const response = await fetch(imageUrl);
+  const blob = await response.blob();
+  
+  // Use Gemini's vision capabilities
+  const visionResponse = await geminiClient.models.generateContent({
+    model: 'gemini-2.0-flash',
+    contents: [question, await blobToImageData(blob)],
+  });
+
+  return visionResponse.text;
+};
+```
+
+### **Phase 3: Workflow Integration**
+
+#### Task 9: Image-Enhanced Conversation Flows
+
+Create templates that combine text and image generation:
+
+**Educational Material Template:**
+```typescript
+{
+  name: 'Visual Learning Path',
+  nodes: [
+    { type: 'question', content: '{{topic}} explanation' },
+    { type: 'answer', content: 'Text explanation...' },
+    { type: 'image_generation', prompt: 'Diagram illustrating {{topic}}' },
+    { type: 'image_generation', prompt: 'Real-world example of {{topic}}' },
+    { type: 'question', content: 'Quiz question about {{topic}}' },
+  ]
+}
+```
+
+**Product Design Template:**
+```typescript
+{
+  name: 'Product Concept Development',
+  nodes: [
+    { type: 'question', content: 'Product requirements for {{product}}' },
+    { type: 'answer', content: 'Requirements analysis...' },
+    { type: 'image_generation', prompt: 'Sketch concept for {{product}}' },
+    { type: 'decision', content: 'Choose design direction' },
+    // Branch 1: Modern style
+    { type: 'image_generation', prompt: 'Modern {{product}} design, minimalist' },
+    // Branch 2: Classic style
+    { type: 'image_generation', prompt: 'Classic {{product}} design, traditional' },
+    { type: 'image_generation', prompt: 'Product mockup in use' },
+  ]
+}
+```
+
+#### Task 10: Export with Images
+
+Update export functions to handle images:
+
+```typescript
+const exportToMarkdown = (tree: ConversationTree) => {
+  let markdown = `# ${tree.title}\n\n`;
+  
+  tree.nodes.forEach(node => {
+    if (node.data.type === 'image_generation') {
+      markdown += `## Image: ${node.data.prompt}\n\n`;
+      markdown += `![${node.data.prompt}](${node.data.imageUrl})\n\n`;
+      markdown += `**Model:** ${node.data.model}\n`;
+      markdown += `**Config:** ${JSON.stringify(node.data.config)}\n\n`;
+    } else {
+      markdown += `## ${node.data.content}\n\n`;
+    }
+  });
+  
+  return markdown;
+};
+```
+
+### **Phase 4: UI Polish**
+
+#### Task 11: Image Gallery View
+
+```typescript
+const ImageGalleryView: React.FC = ({ treeId }) => {
+  const imageNodes = useImageNodes(treeId);
+  
+  return (
+    <div className="image-gallery">
+      <div className="gallery-grid">
+        {imageNodes.map(node => (
+          <div key={node.id} className="gallery-item">
+            <img src={node.data.imageUrl} alt={node.data.prompt} />
+            <div className="image-info">
+              <p>{node.data.prompt}</p>
+              <button onClick={() => focusNode(node.id)}>
+                View in Canvas
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+```
+
+#### Task 12: Image Edit History Timeline
+
+```typescript
+const ImageEditHistory: React.FC<{ nodeData: ImageNodeData }> = ({ nodeData }) => {
+  return (
+    <div className="edit-history-timeline">
+      {nodeData.metadata.editHistory?.map((edit, index) => (
+        <div key={index} className="history-item">
+          <div className="history-timestamp">
+            {edit.timestamp.toLocaleString()}
+          </div>
+          <div className="history-preview">
+            <img src={edit.previousImageUrl} alt="Previous version" />
+          </div>
+          <div className="history-instruction">
+            {edit.instruction}
+          </div>
+          <button onClick={() => restoreVersion(nodeData.id, edit)}>
+            Restore
+          </button>
+        </div>
+      ))}
+    </div>
+  );
+};
+```
+
+## Configuration
+
+### Environment Setup
+
+**`.env` file:**
+```bash
+VITE_GEMINI_API_KEY=your_gemini_api_key_here
+VITE_OPENAI_API_KEY=your_openai_key # existing
+```
+
+### Settings UI
+
+Add Gemini configuration to settings:
+
+```typescript
+<div className="api-settings">
+  <h3>API Keys</h3>
+  <input
+    type="password"
+    placeholder="OpenAI API Key"
+    value={openaiKey}
+    onChange={(e) => setOpenaiKey(e.target.value)}
+  />
+  <input
+    type="password"
+    placeholder="Gemini API Key"
+    value={geminiKey}
+    onChange={(e) => setGeminiKey(e.target.value)}
+  />
+  
+  <h3>Default Image Settings</h3>
+  <select value={defaultImageModel}>
+    <option value="gemini-2.5-flash-image">Flash (Faster, cheaper)</option>
+    <option value="gemini-3-pro-image-preview">Pro (Higher quality)</option>
+  </select>
+</div>
+```
+
+## Use Cases for InferFlow + Image Generation
+
+1. **Educational Content Creation:** Generate diagrams, illustrations, and visual aids alongside explanations
+
+2. **Product Design:** Explore multiple visual concepts in parallel branches
+
+3. **Creative Writing:** Generate character portraits, scene illustrations, cover art concepts
+
+4. **Documentation:** Create technical diagrams, UI mockups, architecture visualizations
+
+5. **Marketing:** Generate social media graphics, ad variations, product photos
+
+6. **Presentation Building:** Generate slides with AI-created visuals matching the content
+
+This integration transforms InferFlow from a text-based thinking tool into a **multimodal creative workspace** where visual and textual exploration happen simultaneously!
