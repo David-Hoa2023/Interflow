@@ -1,5 +1,8 @@
 # InferFlow
 
+[![CI/CD Pipeline](https://github.com/David-Hoa2023/Interflow/actions/workflows/ci.yml/badge.svg)](https://github.com/David-Hoa2023/Interflow/actions/workflows/ci.yml)
+[![Code Quality](https://github.com/David-Hoa2023/Interflow/actions/workflows/code-quality.yml/badge.svg)](https://github.com/David-Hoa2023/Interflow/actions/workflows/code-quality.yml)
+
 An infinite canvas application for managing branching LLM conversations with context-aware chat spawning and summarization capabilities.
 
 ![InferFlow Screenshot](docs/screenshot.png)
@@ -14,6 +17,13 @@ An infinite canvas application for managing branching LLM conversations with con
 - 🌓 **Dark/Light Theme** - Toggle between themes
 - 📦 **Collapsible Nodes** - Collapse/expand conversation nodes
 - 🔄 **Auto-layout & Manual** - Drag nodes or let them auto-position
+- 🤖 **Multi-Model Support** - Use OpenAI, Anthropic Claude, or Google Gemini
+- 📝 **Rich Media** - Code syntax highlighting, markdown rendering, images, and links
+- ✅ **Selective Context** - Choose which nodes to include in conversation context
+- ⭐ **Bookmarks** - Bookmark important nodes for quick access
+- 🧭 **Breadcrumb Navigation** - Visual path from root to current node
+- 🎯 **Path Highlighting** - Highlight conversation chains on the canvas
+- 🔍 **Search** - Full-text search across all conversations
 
 ## Getting Started
 
@@ -81,9 +91,13 @@ src/
 - **React Flow** - Infinite canvas
 - **Zustand** - State management
 - **Tailwind CSS** - Styling
-- **OpenAI SDK** - LLM integration
+- **OpenAI SDK** - GPT models integration
+- **Anthropic SDK** - Claude models integration
+- **Google Generative AI** - Gemini models integration
+- **React Markdown** - Markdown rendering
+- **React Syntax Highlighter** - Code syntax highlighting
 
-## Features (Implemented)
+## Implemented Features
 
 - ✅ **Session Management** - Save, load, export, and import conversation sessions
 - ✅ **Auto Layout** - Automatically organize nodes in a hierarchical tree layout
@@ -91,13 +105,23 @@ src/
 - ✅ **Node Management** - Delete nodes and assign human-readable names
 - ✅ **Section Selection** - Select specific sections of answers for context
 - ✅ **Export/Import** - Save sessions to JSON files and load them elsewhere
+- ✅ **Multi-Model Support** - OpenAI (GPT), Anthropic (Claude), Google (Gemini)
+- ✅ **Rich Media Rendering** - Markdown, code highlighting, images, links
+- ✅ **Selective Context** - Include/exclude nodes from conversation context
+- ✅ **Navigation** - Breadcrumbs, bookmarks, path highlighting
+- ✅ **Search** - Full-text search with filtering by type and model
+- ✅ **CI/CD Pipeline** - Automated testing, building, and deployment
 
 ## Future Features
 
-- [ ] Support for other LLM providers (Anthropic, etc.)
-- [ ] Search across conversations
-- [ ] Conversation templates
-- [ ] Enhanced export formats (PDF, PNG)
+- [ ] Backend & Database (Supabase integration)
+- [ ] Conversation templates library
+- [ ] Enhanced export formats (PDF, PNG, presentations)
+- [ ] Real-time collaboration
+- [ ] Performance optimization (virtual rendering, lazy loading)
+- [ ] Testing infrastructure (unit, integration, E2E tests)
+- [ ] Advanced analytics and insights
+- [ ] Version control for conversation trees
 
 ## License
 
