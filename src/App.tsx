@@ -2,7 +2,8 @@ import { useState, useEffect, useCallback } from 'react';
 import ConversationCanvas from './components/canvas/ConversationCanvas';
 import InferenceWindow from './components/inference/InferenceWindow';
 import ImageGenerationWindow from './components/inference/ImageGenerationWindow';
-import { VisionAnalysisWindow } from './components/image';
+import { VisionAnalysisWindow, ImageGallery, ImageHistoryTimeline } from './components/image';
+import { ConversationTemplateExecutor } from './components/templates';
 import SummaryView from './components/summary/SummaryView';
 import SessionManager from './components/session/SessionManager';
 import { SettingsPanel } from './components/settings/SettingsPanel';
@@ -25,6 +26,9 @@ function App() {
   const [showBookmarks, setShowBookmarks] = useState(false);
   const [showImageGeneration, setShowImageGeneration] = useState(false);
   const [showVisionAnalysis, setShowVisionAnalysis] = useState(false);
+  const [showTemplates, setShowTemplates] = useState(false);
+  const [showImageGallery, setShowImageGallery] = useState(false);
+  const [showImageHistory, setShowImageHistory] = useState(false);
   const [highlightedNodeId, setHighlightedNodeId] = useState<string | null>(null);
   const { theme, setTheme, loadFromStorage } = useConfigStore();
   const { clearAll, loadFromStorage: loadConversations, applyAutoLayout } = useConversationStore();
@@ -142,10 +146,28 @@ function App() {
             🎨 Generate Image
           </button>
           <button
+            onClick={() => setShowImageGallery(true)}
+            className="px-4 py-2 bg-pink-600 hover:bg-pink-700 text-white rounded-lg transition-colors text-sm font-medium"
+          >
+            🖼️ Image Gallery
+          </button>
+          <button
+            onClick={() => setShowImageHistory(true)}
+            className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors text-sm font-medium"
+          >
+            ⏱️ Image History
+          </button>
+          <button
             onClick={() => setShowVisionAnalysis(true)}
             className="px-4 py-2 bg-purple-500 hover:bg-purple-600 text-white rounded-lg transition-colors text-sm font-medium"
           >
             👁️ Analyze Image
+          </button>
+          <button
+            onClick={() => setShowTemplates(true)}
+            className="px-4 py-2 bg-indigo-500 hover:bg-indigo-600 text-white rounded-lg transition-colors text-sm font-medium"
+          >
+            ✨ Templates
           </button>
           <button
             onClick={handleClearCanvas}
@@ -229,6 +251,34 @@ function App() {
               parentNodeId={parentNodeId}
               onComplete={() => setShowVisionAnalysis(false)}
             />
+          )}
+
+          {/* Conversation Templates Modal */}
+          {showTemplates && (
+            <ConversationTemplateExecutor
+              onClose={() => setShowTemplates(false)}
+              onExecuteStep={(step) => {
+                // For now, just alert the user with the prompt
+                // In a full implementation, this would trigger the appropriate window
+                alert(`Execute ${step.type} step:\n\n${step.prompt}`);
+              }}
+            />
+          )}
+
+          {/* Image Gallery Modal */}
+          {showImageGallery && (
+            <ImageGallery
+              onClose={() => setShowImageGallery(false)}
+              onSelectImage={(_imageUrl, node) => {
+                // When an image is selected, highlight the node it came from
+                setHighlightedNodeId(node.id);
+              }}
+            />
+          )}
+
+          {/* Image History Timeline Modal */}
+          {showImageHistory && (
+            <ImageHistoryTimeline onClose={() => setShowImageHistory(false)} />
           )}
         </div>
       );

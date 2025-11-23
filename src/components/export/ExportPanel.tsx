@@ -1,13 +1,13 @@
 import React, { useState } from 'react';
-import { X, Download, FileText, FileJson, CheckCircle } from 'lucide-react';
+import { X, Download, FileText, FileJson, FileCode, CheckCircle } from 'lucide-react';
 import { useConversationStore } from '../../store/conversationStore';
-import { exportToMarkdown, exportToJSON, downloadFile, generateFilename } from '../../utils/exportUtils';
+import { exportToMarkdown, exportToJSON, exportToHTML, downloadFile, generateFilename } from '../../utils/exportUtils';
 
 interface ExportPanelProps {
   onClose: () => void;
 }
 
-type ExportFormat = 'markdown' | 'json';
+type ExportFormat = 'markdown' | 'json' | 'html';
 
 export const ExportPanel: React.FC<ExportPanelProps> = ({ onClose }) => {
   const { tree, currentSessionId, sessions } = useConversationStore();
@@ -26,10 +26,14 @@ export const ExportPanel: React.FC<ExportPanelProps> = ({ onClose }) => {
       content = exportToMarkdown(tree, sessionName);
       filename = generateFilename(sessionName, 'md');
       mimeType = 'text/markdown';
-    } else {
+    } else if (selectedFormat === 'json') {
       content = exportToJSON(tree, sessionName, currentSessionId || undefined);
       filename = generateFilename(sessionName, 'json');
       mimeType = 'application/json';
+    } else {
+      content = exportToHTML(tree, sessionName);
+      filename = generateFilename(sessionName, 'html');
+      mimeType = 'text/html';
     }
 
     downloadFile(content, filename, mimeType);
@@ -55,6 +59,13 @@ export const ExportPanel: React.FC<ExportPanelProps> = ({ onClose }) => {
       icon: FileJson,
       description: 'Machine-readable format with full data structure',
       extension: '.json',
+    },
+    {
+      id: 'html' as const,
+      name: 'HTML',
+      icon: FileCode,
+      description: 'Styled webpage with embedded images and responsive design',
+      extension: '.html',
     },
   ];
 
@@ -174,12 +185,17 @@ export const ExportPanel: React.FC<ExportPanelProps> = ({ onClose }) => {
                 {selectedFormat === 'markdown' ? (
                   <>
                     The Markdown export will include all nodes in a tree structure with
-                    headers, metadata, questions, and answers formatted for readability.
+                    headers, metadata, questions, answers, and embedded images formatted for readability.
                   </>
-                ) : (
+                ) : selectedFormat === 'json' ? (
                   <>
                     The JSON export will include the complete data structure with all
                     metadata, making it easy to re-import or process programmatically.
+                  </>
+                ) : (
+                  <>
+                    The HTML export will create a styled webpage with embedded images, responsive design,
+                    and color-coded sections. Perfect for sharing or archiving conversations.
                   </>
                 )}
               </div>
@@ -212,7 +228,7 @@ export const ExportPanel: React.FC<ExportPanelProps> = ({ onClose }) => {
             ) : (
               <>
                 <Download className="w-4 h-4" />
-                Export {selectedFormat === 'markdown' ? 'Markdown' : 'JSON'}
+                Export {selectedFormat === 'markdown' ? 'Markdown' : selectedFormat === 'json' ? 'JSON' : 'HTML'}
               </>
             )}
           </button>
